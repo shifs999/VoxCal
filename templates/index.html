@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxCal - Voice to Calendar</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #3730a3;
+            --accent: #22d3ee;
+            --accent2: #a78bfa;
+            --bg-light: #f3f6fb;
+            --bg-dark: #101014;
+            --card-light: #fff;
+            --card-dark: #1a1a22;
+            --glass: rgba(255,255,255,0.13);
+            --glass-dark: rgba(36,37,46,0.82);
+            --text-light: #23232a;
+            --text-dark: #f3f6fb;
+            --border-light: #e5e7eb;
+            --border-dark: #23232a;
+            --shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+            --event-bg: #fff;
+            --event-title: #23232a;
+            --event-detail: #6366f1;
+            --event-icon: #6366f1;
+        }
+        html[data-theme='dark'] {
+            --bg: var(--bg-dark);
+            --card: var(--card-dark);
+            --glass-bg: var(--glass-dark);
+            --text: var(--text-dark);
+            --border: var(--border-dark);
+            --event-bg: #23232a;
+            --event-title: #fff;
+            --event-detail: #a5b4fc;
+            --event-icon: #a5b4fc;
+        }
+        html[data-theme='light'] {
+            --bg: var(--bg-light);
+            --card: var(--card-light);
+            --glass-bg: var(--glass);
+            --text: var(--text-light);
+            --border: var(--border-light);
+        }
+        html, body {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #818cf8 #23232a;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s, color 0.3s;
+            position: relative;
+        }
+        .bg-svg {
+            position: fixed;
+            z-index: 0;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none;
+            opacity: 0.45;
+        }
+        .container {
+            background: var(--glass-bg);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 38px 28px 28px 28px;
+            max-width: 430px;
+            width: 100%;
+            margin: 32px 0;
+            border: 1.5px solid var(--border);
+            backdrop-filter: blur(16px) saturate(120%);
+            -webkit-backdrop-filter: blur(16px) saturate(120%);
+            transition: background 0.3s, color 0.3s, border 0.3s;
+            position: relative;
+            z-index: 1;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            justify-content: center;
+        }
+        .header i {
+            color: var(--primary);
+            font-size: 1.7rem;
+        }
+        .header span {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+        .theme-toggle {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            display: flex;
+            gap: 8px;
+            z-index: 2;
+        }
+        .theme-toggle button {
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .theme-toggle button.active, .theme-toggle button:hover {
+            background: var(--border);
+        }
+        .typing-box {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent2) 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 18px 18px 18px 22px;
+            margin-bottom: 22px;
+            font-size: 1.08rem;
+            font-weight: 500;
+            min-height: 56px;
+            box-shadow: 0 2px 16px 0 rgba(99,102,241,0.10);
+            letter-spacing: 0.01em;
+            position: relative;
+            overflow: hidden;
+        }
+        .typing-cursor {
+            display: inline-block;
+            width: 1ch;
+            animation: blink 1s steps(1) infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .voice-btn {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            border: none;
+            font-size: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px auto;
+            box-shadow: 0 2px 18px rgba(99,102,241,0.18);
+            cursor: pointer;
+            transition: box-shadow 0.2s, background 0.2s, transform 0.1s;
+            position: relative;
+        }
+        .voice-btn:active {
+            transform: scale(0.97);
+        }
+        .voice-btn.recording {
+            background: linear-gradient(135deg, #f43f5e, #f59e42);
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(244,63,94,0.2); }
+            70% { box-shadow: 0 0 0 18px rgba(244,63,94,0.08); }
+            100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.0); }
+        }
+        .status {
+            text-align: center;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 1.08rem;
+        }
+        .status.success { color: #22c55e; }
+        .status.error { color: #ef4444; }
+        .transcript, .event-preview {
+            background: var(--event-bg);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+            font-size: 1rem;
+            color: var(--event-title);
+        }
+        .event-preview {
+            margin-bottom: 0;
+        }
+        .event-title {
+            font-size: 1.13rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--event-title);
+        }
+        .event-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: var(--event-detail);
+            font-size: 0.99rem;
+        }
+        .event-detail i { color: var(--event-icon); }
+        .add-gcal-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent2));
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 15px 0;
+            font-size: 1.13rem;
+            font-weight: 700;
+            margin-top: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 12px 0 rgba(99,102,241,0.13);
+            letter-spacing: 0.01em;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+        }
+        .add-gcal-btn:hover {
+            background: linear-gradient(90deg, var(--accent2), var(--primary));
+            box-shadow: 0 4px 18px 0 rgba(99,102,241,0.18);
+            transform: translateY(-2px) scale(1.01);
+        }
+        .download-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(90deg, #06b6d4, #818cf8 100%);
+            color: #18181b;
+            border: none;
+            border-radius: 8px;
+            padding: 13px 0;
+            font-size: 1.09rem;
+            font-weight: 700;
+            margin-top: 12px;
+            cursor: pointer;
+            letter-spacing: 0.01em;
+            box-shadow: 0 2px 12px 0 rgba(34,211,238,0.13);
+            text-align: center;
+            text-decoration: none;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+        }
+        .download-btn:hover {
+            background: linear-gradient(90deg, #818cf8, #06b6d4 100%);
+            box-shadow: 0 4px 18px 0 rgba(34,211,238,0.18);
+            color: #18181b;
+            transform: translateY(-2px) scale(1.01);
+        }
+        @media (max-width: 600px) {
+            .container { padding: 18px 4px; }
+            .theme-toggle { right: 10px; top: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <svg class="bg-svg" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="bg1" cx="50%" cy="50%" r="80%" fx="50%" fy="50%" gradientTransform="rotate(20)">
+                <stop offset="0%" stop-color="#818cf8" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="bg2" cx="50%" cy="50%" r="80%" fx="50%" fy="50%" gradientTransform="rotate(-20)">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.13"/>
+                <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+            </radialGradient>
+        </defs>
+        <ellipse cx="400" cy="200" rx="400" ry="200" fill="url(#bg1)"/>
+        <ellipse cx="1200" cy="700" rx="350" ry="180" fill="url(#bg2)"/>
+        <g opacity="0.08">
+            <rect x="900" y="100" width="120" height="120" rx="32" fill="#6366f1"/>
+            <rect x="200" y="700" width="100" height="100" rx="28" fill="#22d3ee"/>
+            <rect x="700" y="500" width="80" height="80" rx="20" fill="#a78bfa"/>
+        </g>
+    </svg>
+    <div class="theme-toggle">
+        <button id="lightMode" title="Light mode"><i class="fa fa-sun"></i></button>
+        <button id="darkMode" title="Dark mode"><i class="fa fa-moon"></i></button>
+        <button id="systemMode" title="System mode"><i class="fa fa-desktop"></i></button>
+    </div>
+    <div class="container">
+        <div class="header">
+            <i class="fa fa-calendar-check"></i>
+            <span>VoxCal</span>
+        </div>
+        <div style="text-align:center; margin: 18px 0 10px 0;">
+            <p style="margin-bottom:6px;font-weight:600;color:#6366f1;">Scan to open on your phone:</p>
+            <img id="qrcode" src="" alt="QR Code to open on mobile" style="border-radius:12px;box-shadow:0 2px 12px #0001;">
+        </div>
+        <div class="info-box" style="background:rgba(99,102,241,0.09);border-radius:10px;padding:13px 16px 13px 16px;margin-bottom:18px;font-size:1.01rem;font-weight:500;color:var(--primary);text-align:center;">
+            <i class="fa fa-info-circle"></i> 
+            <span>
+                <b>Note:</b> Please mention the events clearly with proper date, time and duration. If you mention one event, you can add it directly to Google Calendar. If you mention multiple events, you can only download the .ics file and import it into your calendar manually.
+            </span>
+        </div>
+        <div class="typing-box" id="typingBox"><span id="typingText"></span><span class="typing-cursor">|</span></div>
+        <div class="mic-hint" id="micHint" style="text-align:center;margin-bottom:8px;font-weight:600;color:#818cf8;display:none;">Tap again to stop when done.</div>
+        <button class="voice-btn" id="voiceBtn" onclick="toggleSpeechRecognition()">
+            <i class="fa fa-microphone"></i>
+        </button>
+        <div class="status" id="status"></div>
+        <div class="transcript" id="transcript" style="display:none;"></div>
+        <div class="event-preview" id="eventPreview" style="display:none;"></div>
+        <button class="add-gcal-btn" id="gcalBtn" style="display:none;">Add to Google Calendar</button>
+        <a class="download-btn" id="downloadBtn" href="#" download style="display:none;"><i class="fa fa-download"></i> Download .ics File</a>
+    </div>
+    <script>
+        // Theme switching
+        const html = document.documentElement;
+        const themeBtns = {
+            light: document.getElementById('lightMode'),
+            dark: document.getElementById('darkMode'),
+            system: document.getElementById('systemMode')
+        };
+        function setTheme(theme) {
+            if (theme === 'system') {
+                html.removeAttribute('data-theme');
+            } else {
+                html.setAttribute('data-theme', theme);
+            }
+            localStorage.setItem('theme', theme);
+            for (const key in themeBtns) themeBtns[key].classList.remove('active');
+            themeBtns[theme].classList.add('active');
+        }
+        themeBtns.light.onclick = () => setTheme('light');
+        themeBtns.dark.onclick = () => setTheme('dark');
+        themeBtns.system.onclick = () => setTheme('system');
+        // Init theme
+        const savedTheme = localStorage.getItem('theme') || 'system';
+        setTheme(savedTheme);
+        // System theme change
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (localStorage.getItem('theme') === 'system') setTheme('system');
+        });
+
+        // Typing/fade animated message area
+        const typingBox = document.getElementById('typingBox');
+        const typingText = document.getElementById('typingText');
+        const messages = [
+            'Click the microphone and mention your events naturally in any order...',
+            'Please speak in a clear and concise manner for accurate voice capture and wait for a few seconds of processing...',
+            'Example: "Schedule a meeting for me tomorrow at 2pm for one hour..."',
+            'Example: "Doctor appointment on July 2nd at 10am..."',
+            'You can say: "Lunch with family next Friday at noon for half an hour..."',
+            'Try: "Study session at 3pm for 90 minutes..."',
+            'Try: "Business meeting at 4pm for 1.5 hours and dinner at 7pm for two hours..."',
+            'Download the .ics file or add directly to Google Calendar!'
+        ];
+        let msgIdx = 0, charIdx = 0, typing = true;
+        function typeMessage() {
+            if (charIdx <= messages[msgIdx].length) {
+                typingText.textContent = messages[msgIdx].slice(0, charIdx++);
+                setTimeout(typeMessage, 22 + Math.random()*30);
+            } else {
+                typing = false;
+                setTimeout(eraseMessage, 1800);
+            }
+        }
+        function eraseMessage() {
+            if (charIdx > 0) {
+                typingText.textContent = messages[msgIdx].slice(0, --charIdx);
+                setTimeout(eraseMessage, 10 + Math.random()*18);
+            } else {
+                msgIdx = (msgIdx + 1) % messages.length;
+                typing = true;
+                setTimeout(typeMessage, 600);
+            }
+        }
+        setTimeout(typeMessage, 600);
+
+        // Voice recording and browser speech-to-text (toggle, continuous)
+        let recognitionInstance = null;
+        let isListening = false;
+        let collectedTranscript = '';
+        const micHint = document.getElementById('micHint');
+        document.getElementById('voiceBtn').onclick = toggleSpeechRecognition;
+
+        function toggleSpeechRecognition() {
+            if (isListening) {
+                stopSpeechRecognition();
+            } else {
+                startSpeechRecognition();
+            }
+        }
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('Speech recognition not supported in this browser.');
+                return;
+            }
+            recognitionInstance = new SpeechRecognition();
+            recognitionInstance.lang = 'en-US';
+            recognitionInstance.interimResults = false;
+            recognitionInstance.continuous = true;
+            isListening = true;
+            collectedTranscript = '';
+            document.getElementById('voiceBtn').classList.add('recording');
+            document.getElementById('status').textContent = 'Listening... Speak your event.';
+            document.getElementById('status').className = 'status';
+            micHint.textContent = 'Tap again to stop when done.';
+            micHint.style.display = '';
+            document.getElementById('transcript').style.display = 'none';
+            document.getElementById('eventPreview').style.display = 'none';
+            document.getElementById('gcalBtn').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+            recognitionInstance.onresult = function(event) {
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        collectedTranscript += ' ' + event.results[i][0].transcript;
+                    }
+                }
+            };
+            recognitionInstance.onerror = function(event) {
+                if (!isListening) return;
+                stopSpeechRecognition();
+                document.getElementById('status').textContent = 'Speech recognition error: ' + event.error;
+                document.getElementById('status').className = 'status error';
+            };
+            recognitionInstance.onend = function() {
+                if (isListening) {
+                    recognitionInstance.start();
+                }
+            };
+            recognitionInstance.start();
+        }
+        function stopSpeechRecognition() {
+            if (recognitionInstance) {
+                isListening = false;
+                recognitionInstance.onend = null;
+                recognitionInstance.stop();
+                document.getElementById('voiceBtn').classList.remove('recording');
+                micHint.style.display = 'none';
+                document.getElementById('status').textContent = 'Processing...';
+                processText(collectedTranscript.trim());
+            }
+        }
+        async function processText(text) {
+            const response = await fetch('/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('status').textContent = 'Success! Your event' + (data.events.length > 1 ? 's are' : ' is') + ' ready.';
+                document.getElementById('status').className = 'status success';
+                document.getElementById('transcript').textContent = '"' + data.transcript + '"';
+                document.getElementById('transcript').style.display = '';
+                if (data.events.length > 1) {
+                    let html = '';
+                    data.events.forEach((event, i) => { html += renderEventPreview(event, i+1); });
+                    document.getElementById('eventPreview').innerHTML = html;
+                } else {
+                    document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
+                }
+                document.getElementById('eventPreview').style.display = '';
+                // Button logic
+                if (data.single_event) {
+                    document.getElementById('gcalBtn').style.display = '';
+                    document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
+                    document.getElementById('downloadBtn').style.display = 'none';
+                } else {
+                    document.getElementById('gcalBtn').style.display = 'none';
+                    document.getElementById('downloadBtn').style.display = '';
+                    document.getElementById('downloadBtn').href = `/download/calendar.ics?data=${data.ics_file}`;
+                    document.getElementById('downloadBtn').setAttribute('download', 'calendar.ics');
+                }
+            } else {
+                document.getElementById('status').textContent = 'Error: ' + (data.error || 'Could not process speech.');
+                document.getElementById('status').className = 'status error';
+            }
+        }
+        function renderEventPreview(event, idx) {
+            const start = new Date(event.start);
+            const end = new Date(event.end);
+            const duration = (end - start) / (1000 * 60 * 60);
+            return `
+                <div class="event-title">${idx ? `Event ${idx}: ` : ''}${event.summary || 'Event'}</div>
+                <div class="event-detail"><i class="fa fa-calendar"></i> ${start.toLocaleDateString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric'})}</div>
+                <div class="event-detail"><i class="fa fa-clock"></i> ${start.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} (${duration} hour${duration>1?'s':''})</div>
+                <div class="event-detail"><i class="fa fa-file-alt"></i> ${event.summary || ''} at ${start.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} for ${duration} hour${duration>1?'s':''}</div>
+                <hr style="border:0;border-top:1px solid #818cf8;margin:10px 0;">
+            `;
+        }
+        function openGoogleCalendar(event) {
+            const start = new Date(event.start);
+            const end = new Date(event.end);
+            const pad = n => n.toString().padStart(2, '0');
+            const format = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00Z`;
+            const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.summary)}&dates=${format(start)}/${format(end)}&details=${encodeURIComponent(event.summary)}&sf=true&output=xml`;
+            window.open(url, '_blank');
+        }
+        // Set QR code to current site origin
+        window.addEventListener('DOMContentLoaded', function() {
+            var qr = document.getElementById('qrcode');
+            if (qr) {
+                qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(window.location.origin);
+            }
+        });
+    </script>
+</body>
+</html> 
