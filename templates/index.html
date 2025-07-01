@@ -9,25 +9,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #3730a3;
-            --accent: #22d3ee;
-            --accent2: #a78bfa;
-            --bg-light: #f3f6fb;
-            --bg-dark: #101014;
-            --card-light: #fff;
+            --primary: blue;
+            --primary-dark: darkblue;
+            --accent: cyan;
+            --accent2: violet;
+            --bg-light: white;
+            --bg-dark: black;
+            --card-light: white;
             --card-dark: #1a1a22;
             --glass: rgba(255,255,255,0.13);
             --glass-dark: rgba(36,37,46,0.82);
             --text-light: #23232a;
-            --text-dark: #f3f6fb;
-            --border-light: #e5e7eb;
+            --text-dark: white;
+            --border-light: lightgray;
             --border-dark: #23232a;
             --shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
-            --event-bg: #fff;
+            --event-bg: white;
             --event-title: #23232a;
-            --event-detail: #6366f1;
-            --event-icon: #6366f1;
+            --event-detail: blue;
+            --event-icon: blue;
+            --voxcal-dark: #00ffff;
+            --voxcal-light: #0050b3;
         }
         html[data-theme='dark'] {
             --bg: var(--bg-dark);
@@ -36,9 +38,9 @@
             --text: var(--text-dark);
             --border: var(--border-dark);
             --event-bg: #23232a;
-            --event-title: #fff;
-            --event-detail: #a5b4fc;
-            --event-icon: #a5b4fc;
+            --event-title: white;
+            --event-detail: violet;
+            --event-icon: violet;
         }
         html[data-theme='light'] {
             --bg: var(--bg-light);
@@ -151,8 +153,8 @@
             width: 90px;
             height: 90px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: #fff;
+            background: linear-gradient(135deg, blue, cyan);
+            color: white;
             border: none;
             font-size: 2.5rem;
             display: flex;
@@ -168,7 +170,7 @@
             transform: scale(0.97);
         }
         .voice-btn.recording {
-            background: linear-gradient(135deg, #f43f5e, #f59e42);
+            background: linear-gradient(135deg, red, orange);
             animation: pulse 1.2s infinite;
         }
         @keyframes pulse {
@@ -214,8 +216,8 @@
         .add-gcal-btn {
             display: block;
             width: 100%;
-            background: linear-gradient(90deg, var(--primary), var(--accent2));
-            color: #fff;
+            background: linear-gradient(90deg, blue, violet);
+            color: white;
             border: none;
             border-radius: 8px;
             padding: 15px 0;
@@ -235,8 +237,8 @@
         .download-btn {
             display: block;
             width: 100%;
-            background: linear-gradient(90deg, #06b6d4, #818cf8 100%);
-            color: #18181b;
+            background: linear-gradient(90deg, cyan, blue 100%);
+            color: black;
             border: none;
             border-radius: 8px;
             padding: 13px 0;
@@ -251,14 +253,38 @@
             transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
         }
         .download-btn:hover {
-            background: linear-gradient(90deg, #818cf8, #06b6d4 100%);
+            background: linear-gradient(90deg, blue, cyan 100%);
             box-shadow: 0 4px 18px 0 rgba(34,211,238,0.18);
-            color: #18181b;
+            color: black;
             transform: translateY(-2px) scale(1.01);
         }
         @media (max-width: 600px) {
             .container { padding: 18px 4px; }
             .theme-toggle { right: 10px; top: 10px; }
+            #qrcode { display: none !important; }
+            #mobileMsg { display: block !important; }
+        }
+        @media (min-width: 601px) {
+            #qrcode { display: block !important; }
+            #mobileMsg { display: none !important; }
+        }
+        .info-box {
+            background: lightblue;
+            border-radius: 10px;
+            padding: 13px 16px 13px 16px;
+            margin-bottom: 18px;
+            font-size: 1.01rem;
+            font-weight: 500;
+            color: blue;
+            text-align: center;
+        }
+        html[data-theme='dark'] .voxcal-header, html[data-theme='dark'] .voxcal-icon {
+            color: var(--voxcal-dark) !important;
+            text-shadow: 0 0 6px #00ffff, 0 0 10px #00ffff33;
+        }
+        html[data-theme='light'] .voxcal-header, html[data-theme='light'] .voxcal-icon {
+            color: var(--voxcal-light) !important;
+            text-shadow: none;
         }
     </style>
 </head>
@@ -288,21 +314,23 @@
         <button id="systemMode" title="System mode"><i class="fa fa-desktop"></i></button>
     </div>
     <div class="container">
-        <div class="header">
-            <i class="fa fa-calendar-check"></i>
-            <span>VoxCal</span>
+        <div class="header" style="justify-content:center;align-items:center;">
+            <i class="fa fa-calendar-check voxcal-icon"></i>
+            <span id="voxcalTitle" class="voxcal-header" style="font-weight:900;">VoxCal</span>
         </div>
-        <div style="text-align:center; margin: 18px 0 10px 0;">
-            <p style="margin-bottom:6px;font-weight:600;color:#6366f1;">Scan to open on your phone:</p>
-            <img id="qrcode" src="" alt="QR Code to open on mobile" style="border-radius:12px;box-shadow:0 2px 12px #0001;">
+        <div style="text-align:center; margin: 18px 0 10px 0;display:flex;flex-direction:column;align-items:center;">
+            <p style="margin-bottom:6px;font-weight:700;color:cyan;">Scan to open on your phone:</p>
+            <img id="qrcode" src="" alt="QR Code to open on mobile" style="border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);display:block;margin:0 auto;">
+            <div id="mobileMsg" style="display:none;color:green;font-weight:600;margin-top:10px;">Now add events to calendar directly from your mobile</div>
         </div>
-        <div class="info-box" style="background:rgba(99,102,241,0.09);border-radius:10px;padding:13px 16px 13px 16px;margin-bottom:18px;font-size:1.01rem;font-weight:500;color:var(--primary);text-align:center;">
+        <div class="info-box">
             <i class="fa fa-info-circle"></i> 
             <span>
                 <b>Note:</b> Please mention the events clearly with proper date, time and duration. If you mention one event, you can add it directly to Google Calendar. If you mention multiple events, you can only download the .ics file and import it into your calendar manually.
             </span>
         </div>
         <div class="typing-box" id="typingBox"><span id="typingText"></span><span class="typing-cursor">|</span></div>
+        <input type="text" id="inputBox" placeholder="Your speech will appear here..." style="width:100%;margin-bottom:16px;font-size:1.1rem;padding:12px 10px;border-radius:8px;border:1.5px solid #818cf8;box-sizing:border-box;" readonly>
         <div class="mic-hint" id="micHint" style="text-align:center;margin-bottom:8px;font-weight:600;color:#818cf8;display:none;">Tap again to stop when done.</div>
         <button class="voice-btn" id="voiceBtn" onclick="toggleSpeechRecognition()">
             <i class="fa fa-microphone"></i>
@@ -314,7 +342,6 @@
         <a class="download-btn" id="downloadBtn" href="#" download style="display:none;"><i class="fa fa-download"></i> Download .ics File</a>
     </div>
     <script>
-        // Theme switching
         const html = document.documentElement;
         const themeBtns = {
             light: document.getElementById('lightMode'),
@@ -334,15 +361,12 @@
         themeBtns.light.onclick = () => setTheme('light');
         themeBtns.dark.onclick = () => setTheme('dark');
         themeBtns.system.onclick = () => setTheme('system');
-        // Init theme
         const savedTheme = localStorage.getItem('theme') || 'system';
         setTheme(savedTheme);
-        // System theme change
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (localStorage.getItem('theme') === 'system') setTheme('system');
         });
 
-        // Typing/fade animated message area
         const typingBox = document.getElementById('typingBox');
         const typingText = document.getElementById('typingText');
         const messages = [
@@ -377,7 +401,6 @@
         }
         setTimeout(typeMessage, 600);
 
-        // Voice recording and browser speech-to-text (toggle, continuous)
         let recognitionInstance = null;
         let isListening = false;
         let collectedTranscript = '';
@@ -413,16 +436,25 @@
             document.getElementById('gcalBtn').style.display = 'none';
             document.getElementById('downloadBtn').style.display = 'none';
             recognitionInstance.onresult = function(event) {
+                let transcript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        collectedTranscript += ' ' + event.results[i][0].transcript;
+                        transcript += event.results[i][0].transcript;
                     }
                 }
+                collectedTranscript += ' ' + transcript;
+                document.getElementById("inputBox").value = collectedTranscript.trim();
             };
             recognitionInstance.onerror = function(event) {
                 if (!isListening) return;
                 stopSpeechRecognition();
-                document.getElementById('status').textContent = 'Speech recognition error: ' + event.error;
+                let msg = 'Speech recognition error: ' + event.error;
+                if (event.error === 'not-allowed') {
+                    msg += ' (Microphone access denied. Please allow mic access in your browser settings.)';
+                } else if (event.error === 'no-speech') {
+                    msg += ' (No speech detected. Please try again and speak clearly.)';
+                }
+                document.getElementById('status').textContent = msg;
                 document.getElementById('status').className = 'status error';
             };
             recognitionInstance.onend = function() {
@@ -440,7 +472,13 @@
                 document.getElementById('voiceBtn').classList.remove('recording');
                 micHint.style.display = 'none';
                 document.getElementById('status').textContent = 'Processing...';
-                processText(collectedTranscript.trim());
+                const finalTranscript = collectedTranscript.trim();
+                if (finalTranscript.length === 0) {
+                    document.getElementById('status').textContent = 'Error: No speech detected. Please try again and speak clearly into your microphone.';
+                    document.getElementById('status').className = 'status error';
+                    return;
+                }
+                processText(finalTranscript);
             }
         }
         async function processText(text) {
@@ -463,7 +501,6 @@
                     document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
                 }
                 document.getElementById('eventPreview').style.display = '';
-                // Button logic
                 if (data.single_event) {
                     document.getElementById('gcalBtn').style.display = '';
                     document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
@@ -499,7 +536,6 @@
             const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.summary)}&dates=${format(start)}/${format(end)}&details=${encodeURIComponent(event.summary)}&sf=true&output=xml`;
             window.open(url, '_blank');
         }
-        // Set QR code to current site origin
         window.addEventListener('DOMContentLoaded', function() {
             var qr = document.getElementById('qrcode');
             if (qr) {
