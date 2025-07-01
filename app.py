@@ -53,17 +53,15 @@ def parse_duration(text):
     return 1.0
 
 def extract_event_name(text):
-    text = re.sub(r'^(and then|then|also|and)\s+', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\b(at|by|around)\s+\d{1,2}(:\d{2})?\s*(am|pm)?', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'\b(tomorrow|today|next week|this week|on\s+\w+day)\b', '', text, flags=re.IGNORECASE)
-    # Capture longer natural event phrases that include known keywords
+    # Remove common time/date/duration phrases
+    clean_text = re.sub(r'\b(?:at|on|by|around|for|from)\s+[^.,\n]+', '', text, flags=re.IGNORECASE)
+    clean_text = re.sub(r'\b(tomorrow|today|next week|this week|am|pm|a\.m\.|p\.m\.)\b', '', clean_text, flags=re.IGNORECASE)
+    # Look for a phrase with a keyword in it
     for keyword in EVENT_KEYWORDS:
-        pattern = rf'\b(\w+\s)?{keyword}(\s+\w+)*'
-        match = re.search(pattern, text, re.IGNORECASE)
+        match = re.search(rf'([\w\s]+)?\b{keyword}\b([\w\s]*)?', clean_text, re.IGNORECASE)
         if match:
             phrase = match.group(0).strip()
             return phrase[0].upper() + phrase[1:]
-    # Fallback: just use the first few words
     return ' '.join(text.split()[:4]).capitalize() or 'Event'
 
 def extract_time(text):
@@ -138,8 +136,11 @@ def parse_text_to_events(text):
         sentence = sentence.strip()
         if not sentence:
             continue
-        # Further split on 'and', 'also', 'then' if followed by an event keyword
-        sub_events = SPLIT_PATTERN.split(sentence)
+        # Only split if there are multiple real events
+        if re.search(r'\b(and|also|then)\b', sentence, re.IGNORECASE) and any(kw in sentence.lower() for kw in EVENT_KEYWORDS):
+            sub_events = SPLIT_PATTERN.split(sentence)
+        else:
+            sub_events = [sentence]
         for e in sub_events:
             cleaned = e.strip(' .,!')
             if cleaned and len(cleaned) > 4:
