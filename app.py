@@ -31,6 +31,7 @@ EVENT_KEYWORDS = [
     'therapy', 'massage', 'nap', 'sleep', 'reading', 'book', 'movie', 'show', 'shopping', 'cleanup',
     'cooking', 'cleaning', 'laundry', 'maintenance', 'repair', 'check', 'reminder', 'followup'
 ]
+
 EVENT_KEYWORDS_PATTERN = '|'.join(EVENT_KEYWORDS)
 # Split on 'and', 'also', 'then' only if followed by an event keyword
 SPLIT_PATTERN = re.compile(rf'\b(?:and|also|then)\b(?=\s+(?:a\s+)?(?:{EVENT_KEYWORDS_PATTERN})\b)', re.IGNORECASE)
@@ -61,6 +62,8 @@ def extract_event_name(text):
         match = re.search(rf'([\w\s]+)?\b{keyword}\b([\w\s]*)?', clean_text, re.IGNORECASE)
         if match:
             phrase = match.group(0).strip()
+            # Remove trailing 'for', 'at', 'on', etc. and anything after
+            phrase = re.split(r'\b(for|at|on|by|around|from)\b', phrase)[0].strip()
             return phrase[0].upper() + phrase[1:]
     return ' '.join(text.split()[:4]).capitalize() or 'Event'
 
@@ -137,8 +140,26 @@ def parse_text_to_events(text):
         if not sentence:
             continue
         # Only split if there are multiple real events
-        if re.search(r'\b(and|also|then)\b', sentence, re.IGNORECASE) and any(kw in sentence.lower() for kw in EVENT_KEYWORDS):
-            sub_events = SPLIT_PATTERN.split(sentence)
+        if re.search(r'\b(and|also|then)\b', sentence, re.IGNORECASE):
+            # Custom split: keep duration/time phrases with the previous event
+            parts = []
+            last = 0
+            for m in SPLIT_PATTERN.finditer(sentence):
+                start = m.start()
+                if last < start:
+                    parts.append(sentence[last:start].strip())
+                last = start
+            parts.append(sentence[last:].strip())
+            # Only keep as a new event if the part contains an event keyword
+            merged = []
+            for part in parts:
+                if any(kw in part.lower() for kw in EVENT_KEYWORDS):
+                    merged.append(part)
+                elif merged:
+                    merged[-1] += ' ' + part
+                else:
+                    merged.append(part)
+            sub_events = merged
         else:
             sub_events = [sentence]
         for e in sub_events:
@@ -238,6 +259,7 @@ def download_calendar():
     except Exception as e:
         log.error(f"Error in download endpoint: {e}")
         return jsonify({'success': False, 'error': str(e)})
+
 
 if __name__ == '__main__':
     print("Starting VoxCal - Voice to Calendar Application")
