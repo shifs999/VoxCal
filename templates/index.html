@@ -400,6 +400,7 @@
 
         let recognition;
         let isListening = false;
+        let finalTranscript = '';
 
         document.addEventListener("DOMContentLoaded", () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -410,8 +411,8 @@
 
             recognition = new SpeechRecognition();
             recognition.lang = "en-US";
-            recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.continuous = true;
+            recognition.interimResults = true;
 
             const micButton = document.getElementById("voiceBtn");
             const transcriptBox = document.getElementById("inputBox");
@@ -422,62 +423,71 @@
                     recognition.stop();
                     isListening = false;
                     micButton.classList.remove('recording');
+                    statusBox.innerText = 'Processing...';
+                    statusBox.className = 'status';
+                    const text = finalTranscript.trim();
+                    transcriptBox.value = text;
+                    if (text.length > 0) {
+                        fetch("/transcribe", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ text }),
+                        })
+                        .then((res) => res.json())
+                        .then((data) => {
+                            if (data.success) {
+                                statusBox.innerText = 'Success! Your event' + (data.events.length > 1 ? 's are' : ' is') + ' ready.';
+                                statusBox.className = 'status success';
+                                document.getElementById('transcript').textContent = '"' + data.transcript + '"';
+                                document.getElementById('transcript').style.display = '';
+                                if (data.events.length > 1) {
+                                    let html = '';
+                                    data.events.forEach((event, i) => { html += renderEventPreview(event, i+1); });
+                                    document.getElementById('eventPreview').innerHTML = html;
+                                } else {
+                                    document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
+                                }
+                                document.getElementById('eventPreview').style.display = '';
+                                if (data.single_event) {
+                                    document.getElementById('gcalBtn').style.display = '';
+                                    document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
+                                    document.getElementById('downloadBtn').style.display = 'none';
+                                } else {
+                                    document.getElementById('gcalBtn').style.display = 'none';
+                                    document.getElementById('downloadBtn').style.display = '';
+                                    document.getElementById('downloadBtn').href = `/download/calendar.ics?data=${data.ics_file}`;
+                                    document.getElementById('downloadBtn').setAttribute('download', 'calendar.ics');
+                                }
+                            } else {
+                                statusBox.innerText = 'Error: ' + (data.error || 'Could not process speech.');
+                                statusBox.className = 'status error';
+                            }
+                        });
+                    } else {
+                        statusBox.innerText = 'Error: No speech detected. Please try again and speak clearly into your microphone.';
+                        statusBox.className = 'status error';
+                    }
                     return;
                 }
-
                 isListening = true;
+                finalTranscript = '';
                 micButton.classList.add('recording');
                 statusBox.innerText = "Listening... Speak your event.";
                 statusBox.className = 'status';
                 transcriptBox.value = '';
-
                 recognition.start();
             });
 
             recognition.onresult = (event) => {
-                isListening = false;
-                micButton.classList.remove('recording');
-                const text = event.results[0][0].transcript;
-                transcriptBox.value = text;
-                statusBox.innerText = 'Processing...';
-                statusBox.className = 'status';
-
-                // Send to backend
-                fetch("/transcribe", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text }),
-                })
-                .then((res) => res.json())
-                .then((data) => {
-                    if (data.success) {
-                        statusBox.innerText = 'Success! Your event' + (data.events.length > 1 ? 's are' : ' is') + ' ready.';
-                        statusBox.className = 'status success';
-                        document.getElementById('transcript').textContent = '"' + data.transcript + '"';
-                        document.getElementById('transcript').style.display = '';
-                        if (data.events.length > 1) {
-                            let html = '';
-                            data.events.forEach((event, i) => { html += renderEventPreview(event, i+1); });
-                            document.getElementById('eventPreview').innerHTML = html;
-                        } else {
-                            document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
-                        }
-                        document.getElementById('eventPreview').style.display = '';
-                        if (data.single_event) {
-                            document.getElementById('gcalBtn').style.display = '';
-                            document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
-                            document.getElementById('downloadBtn').style.display = 'none';
-                        } else {
-                            document.getElementById('gcalBtn').style.display = 'none';
-                            document.getElementById('downloadBtn').style.display = '';
-                            document.getElementById('downloadBtn').href = `/download/calendar.ics?data=${data.ics_file}`;
-                            document.getElementById('downloadBtn').setAttribute('download', 'calendar.ics');
-                        }
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
                     } else {
-                        statusBox.innerText = 'Error: ' + (data.error || 'Could not process speech.');
-                        statusBox.className = 'status error';
+                        interimTranscript += event.results[i][0].transcript;
                     }
-                });
+                }
+                transcriptBox.value = (finalTranscript + interimTranscript).trim();
             };
 
             recognition.onerror = (event) => {
