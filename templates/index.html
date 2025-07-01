@@ -323,7 +323,8 @@
         <div class="info-box">
             <i class="fa fa-info-circle"></i> 
             <span>
-                <b>Note:</b> Please mention the events clearly with proper date, time and duration. If you mention one event, you can add it directly to Google Calendar. If you mention multiple events, you can only download the .ics file and import it into your calendar manually.
+                <b>Note:</b> Please mention the events clearly with proper date, time and duration. If you mention one event, you can add it directly to Google Calendar. If you mention multiple events, you can only download the .ics file and import it into your calendar manually.<br>
+                <span style="color:darkblue;font-size:0.98em;display:block;margin-top:6px;">For proper functioning, please mention maximum of 2 events in a single speech.</span>
             </span>
         </div>
         <div class="typing-box" id="typingBox"><span id="typingText"></span><span class="typing-cursor">|</span></div>
@@ -367,13 +368,13 @@
         const typingBox = document.getElementById('typingBox');
         const typingText = document.getElementById('typingText');
         const messages = [
-            'Click the microphone and mention your events naturally in any order...',
-            'Please speak in a clear and concise manner for accurate voice capture and wait for a few seconds of processing...',
-            'Example: "Schedule a meeting for me tomorrow at 2pm for one hour..."',
-            'Example: "Doctor appointment on July 2nd at 10am..."',
+            'Please speak in a clear and concise manner in a continuous flow for accurate voice capture and wait for a few seconds of processing...',
+            'Example: "Business meeting on July 2nd at 10am..."',
             'You can say: "Lunch with family next Friday at noon for half an hour..."',
             'Try: "Study session at 3pm for 90 minutes..."',
             'Try: "Business meeting at 4pm for 1.5 hours and dinner at 7pm for two hours..."',
+            'Use "and then", "also", "next", etc. to separate events, and each event must contain a clear event keyword',
+            'Please mention event names, dates, times, and durations only in short, do not mention other details like location, etc.',
             'Download the .ics file or add directly to Google Calendar!'
         ];
         let msgIdx = 0, charIdx = 0, typing = true;
