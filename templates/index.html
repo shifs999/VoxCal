@@ -332,7 +332,7 @@
         <div class="typing-box" id="typingBox"><span id="typingText"></span><span class="typing-cursor">|</span></div>
         <input type="text" id="inputBox" placeholder="Your speech will appear here..." style="width:100%;margin-bottom:16px;font-size:1.1rem;padding:12px 10px;border-radius:8px;border:1.5px solid #818cf8;box-sizing:border-box;" readonly>
         <div class="mic-hint" id="micHint" style="text-align:center;margin-bottom:8px;font-weight:600;color:#818cf8;display:none;">Tap again to stop when done.</div>
-        <button class="voice-btn" id="voiceBtn" onclick="toggleSpeechRecognition()">
+        <button class="voice-btn" id="voiceBtn">
             <i class="fa fa-microphone"></i>
         </button>
         <div class="status" id="status"></div>
@@ -401,121 +401,106 @@
         }
         setTimeout(typeMessage, 600);
 
-        let recognitionInstance = null;
+        let recognition;
         let isListening = false;
-        let collectedTranscript = '';
-        const micHint = document.getElementById('micHint');
-        document.getElementById('voiceBtn').onclick = toggleSpeechRecognition;
 
-        function toggleSpeechRecognition() {
-            if (isListening) {
-                stopSpeechRecognition();
-            } else {
-                startSpeechRecognition();
-            }
-        }
-        function startSpeechRecognition() {
+        document.addEventListener("DOMContentLoaded", () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert('Speech recognition not supported in this browser.');
+                alert("Your browser does not support speech recognition.");
                 return;
             }
-            recognitionInstance = new SpeechRecognition();
-            recognitionInstance.lang = 'en-US';
-            recognitionInstance.interimResults = false;
-            recognitionInstance.continuous = true;
-            isListening = true;
-            collectedTranscript = '';
-            document.getElementById('voiceBtn').classList.add('recording');
-            document.getElementById('status').textContent = 'Listening... Speak your event.';
-            document.getElementById('status').className = 'status';
-            micHint.textContent = 'Tap again to stop when done.';
-            micHint.style.display = '';
-            document.getElementById('transcript').style.display = 'none';
-            document.getElementById('eventPreview').style.display = 'none';
-            document.getElementById('gcalBtn').style.display = 'none';
-            document.getElementById('downloadBtn').style.display = 'none';
-            recognitionInstance.onresult = function(event) {
-                let transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        transcript += event.results[i][0].transcript;
-                    }
-                }
-                collectedTranscript += ' ' + transcript;
-                document.getElementById("inputBox").value = collectedTranscript.trim();
-            };
-            recognitionInstance.onerror = function(event) {
-                if (!isListening) return;
-                stopSpeechRecognition();
-                let msg = 'Speech recognition error: ' + event.error;
-                if (event.error === 'not-allowed') {
-                    msg += ' (Microphone access denied. Please allow mic access in your browser settings.)';
-                } else if (event.error === 'no-speech') {
-                    msg += ' (No speech detected. Please try again and speak clearly.)';
-                }
-                document.getElementById('status').textContent = msg;
-                document.getElementById('status').className = 'status error';
-            };
-            recognitionInstance.onend = function() {
+
+            recognition = new SpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            const micButton = document.getElementById("voiceBtn");
+            const transcriptBox = document.getElementById("inputBox");
+            const statusBox = document.getElementById("status");
+
+            micButton.addEventListener("click", () => {
                 if (isListening) {
-                    recognitionInstance.start();
-                }
-            };
-            recognitionInstance.start();
-        }
-        function stopSpeechRecognition() {
-            if (recognitionInstance) {
-                isListening = false;
-                recognitionInstance.onend = null;
-                recognitionInstance.stop();
-                document.getElementById('voiceBtn').classList.remove('recording');
-                micHint.style.display = 'none';
-                document.getElementById('status').textContent = 'Processing...';
-                const finalTranscript = collectedTranscript.trim();
-                if (finalTranscript.length === 0) {
-                    document.getElementById('status').textContent = 'Error: No speech detected. Please try again and speak clearly into your microphone.';
-                    document.getElementById('status').className = 'status error';
+                    recognition.stop();
+                    isListening = false;
+                    micButton.classList.remove('recording');
                     return;
                 }
-                processText(finalTranscript);
-            }
-        }
-        async function processText(text) {
-            const response = await fetch('/transcribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
+
+                isListening = true;
+                micButton.classList.add('recording');
+                statusBox.innerText = "Listening... Speak your event.";
+                statusBox.className = 'status';
+                transcriptBox.value = '';
+
+                recognition.start();
             });
-            const data = await response.json();
-            if (data.success) {
-                document.getElementById('status').textContent = 'Success! Your event' + (data.events.length > 1 ? 's are' : ' is') + ' ready.';
-                document.getElementById('status').className = 'status success';
-                document.getElementById('transcript').textContent = '"' + data.transcript + '"';
-                document.getElementById('transcript').style.display = '';
-                if (data.events.length > 1) {
-                    let html = '';
-                    data.events.forEach((event, i) => { html += renderEventPreview(event, i+1); });
-                    document.getElementById('eventPreview').innerHTML = html;
+
+            recognition.onresult = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                const text = event.results[0][0].transcript;
+                transcriptBox.value = text;
+                statusBox.innerText = 'Processing...';
+                statusBox.className = 'status';
+
+                // Send to backend
+                fetch("/transcribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text }),
+                })
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.success) {
+                        statusBox.innerText = 'Success! Your event' + (data.events.length > 1 ? 's are' : ' is') + ' ready.';
+                        statusBox.className = 'status success';
+                        document.getElementById('transcript').textContent = '"' + data.transcript + '"';
+                        document.getElementById('transcript').style.display = '';
+                        if (data.events.length > 1) {
+                            let html = '';
+                            data.events.forEach((event, i) => { html += renderEventPreview(event, i+1); });
+                            document.getElementById('eventPreview').innerHTML = html;
+                        } else {
+                            document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
+                        }
+                        document.getElementById('eventPreview').style.display = '';
+                        if (data.single_event) {
+                            document.getElementById('gcalBtn').style.display = '';
+                            document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
+                            document.getElementById('downloadBtn').style.display = 'none';
+                        } else {
+                            document.getElementById('gcalBtn').style.display = 'none';
+                            document.getElementById('downloadBtn').style.display = '';
+                            document.getElementById('downloadBtn').href = `/download/calendar.ics?data=${data.ics_file}`;
+                            document.getElementById('downloadBtn').setAttribute('download', 'calendar.ics');
+                        }
+                    } else {
+                        statusBox.innerText = 'Error: ' + (data.error || 'Could not process speech.');
+                        statusBox.className = 'status error';
+                    }
+                });
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                console.error("Speech recognition error:", event.error);
+                if (event.error === "not-allowed") {
+                    statusBox.innerText = "Mic access was blocked. Please allow permission.";
                 } else {
-                    document.getElementById('eventPreview').innerHTML = renderEventPreview(data.events[0]);
+                    statusBox.innerText = "Error: No speech detected. Please try again and speak clearly into your microphone.";
                 }
-                document.getElementById('eventPreview').style.display = '';
-                if (data.single_event) {
-                    document.getElementById('gcalBtn').style.display = '';
-                    document.getElementById('gcalBtn').onclick = () => openGoogleCalendar(data.events[0]);
-                    document.getElementById('downloadBtn').style.display = 'none';
-                } else {
-                    document.getElementById('gcalBtn').style.display = 'none';
-                    document.getElementById('downloadBtn').style.display = '';
-                    document.getElementById('downloadBtn').href = `/download/calendar.ics?data=${data.ics_file}`;
-                    document.getElementById('downloadBtn').setAttribute('download', 'calendar.ics');
-                }
-            } else {
-                document.getElementById('status').textContent = 'Error: ' + (data.error || 'Could not process speech.');
-                document.getElementById('status').className = 'status error';
-            }
-        }
+                statusBox.className = 'status error';
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micButton.classList.remove('recording');
+            };
+        });
+
         function renderEventPreview(event, idx) {
             const start = new Date(event.start);
             const end = new Date(event.end);
@@ -528,6 +513,7 @@
                 <hr style="border:0;border-top:1px solid #818cf8;margin:10px 0;">
             `;
         }
+        
         function openGoogleCalendar(event) {
             const start = new Date(event.start);
             const end = new Date(event.end);
