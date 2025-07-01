@@ -54,12 +54,17 @@ def parse_duration(text):
 
 def extract_event_name(text):
     text = re.sub(r'^(and then|then|also|and)\s+', '', text, flags=re.IGNORECASE)
-    for word in EVENT_KEYWORDS:
-        match = re.search(rf'(\b\w+\b\s+)?\b{word}\b(\s+\w+\b)?', text, re.IGNORECASE)
+    text = re.sub(r'\b(at|by|around)\s+\d{1,2}(:\d{2})?\s*(am|pm)?', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\b(tomorrow|today|next week|this week|on\s+\w+day)\b', '', text, flags=re.IGNORECASE)
+    # Capture longer natural event phrases that include known keywords
+    for keyword in EVENT_KEYWORDS:
+        pattern = rf'\b(\w+\s)?{keyword}(\s+\w+)*'
+        match = re.search(pattern, text, re.IGNORECASE)
         if match:
             phrase = match.group(0).strip()
-            return ' '.join([w.capitalize() for w in phrase.split()])
-    return ' '.join(text.split()[:3]).capitalize() or 'Event'
+            return phrase[0].upper() + phrase[1:]
+    # Fallback: just use the first few words
+    return ' '.join(text.split()[:4]).capitalize() or 'Event'
 
 def extract_time(text):
     match = re.search(r'at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)', text, re.IGNORECASE)
@@ -237,4 +242,3 @@ if __name__ == '__main__':
     print("Starting VoxCal - Voice to Calendar Application")
     print("Open your browser and go to: http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000) 
-    
