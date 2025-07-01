@@ -424,6 +424,45 @@
                     recognition.stop();
                     isListening = false;
                     micButton.classList.remove('recording');
+                    return;
+                }
+                isListening = true;
+                finalTranscript = '';
+                micButton.classList.add('recording');
+                statusBox.innerText = "Listening... Speak your event.";
+                statusBox.className = 'status';
+                transcriptBox.value = '';
+                recognition.start();
+            });
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                transcriptBox.value = (finalTranscript + interimTranscript).trim();
+            };
+
+            recognition.onerror = (event) => {
+                isListening = false;
+                micButton.classList.remove('recording');
+                if (event.error === "not-allowed") {
+                    statusBox.innerText = "Mic access was blocked. Please allow permission.";
+                } else {
+                    statusBox.innerText = "Error: No speech detected. Please try again and speak clearly into your microphone.";
+                }
+                statusBox.className = 'status error';
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    recognition.start();
+                } else {
+                    micButton.classList.remove('recording');
                     statusBox.innerText = 'Processing...';
                     statusBox.className = 'status';
                     const text = finalTranscript.trim();
@@ -468,44 +507,7 @@
                         statusBox.innerText = 'Error: No speech detected. Please try again and speak clearly into your microphone.';
                         statusBox.className = 'status error';
                     }
-                    return;
                 }
-                isListening = true;
-                finalTranscript = '';
-                micButton.classList.add('recording');
-                statusBox.innerText = "Listening... Speak your event.";
-                statusBox.className = 'status';
-                transcriptBox.value = '';
-                recognition.start();
-            });
-
-            recognition.onresult = (event) => {
-                let interimTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-                transcriptBox.value = (finalTranscript + interimTranscript).trim();
-            };
-
-            recognition.onerror = (event) => {
-                isListening = false;
-                micButton.classList.remove('recording');
-                console.error("Speech recognition error:", event.error);
-                if (event.error === "not-allowed") {
-                    statusBox.innerText = "Mic access was blocked. Please allow permission.";
-                } else {
-                    statusBox.innerText = "Error: No speech detected. Please try again and speak clearly into your microphone.";
-                }
-                statusBox.className = 'status error';
-            };
-
-            recognition.onend = () => {
-                isListening = false;
-                micButton.classList.remove('recording');
             };
         });
 
