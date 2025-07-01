@@ -78,7 +78,7 @@ python3 app.py
 1. **Push your code to GitHub.**
 
 2. **Deploy on [Render.com](https://render.com):**
-   - New Web Service → Connect your repo
+   - New Web Service then Connect your repo
    - Environment: Python 3
    - Start Command: `gunicorn app:app`
    - (Render will auto-install from `requirements.txt`)
@@ -105,9 +105,9 @@ python3 app.py
 
 ## API Endpoints
 
-- `GET /` — Main application page
-- `POST /transcribe` — Process recognized text and generate calendar events
-- `GET /download/calendar.ics` — Download generated ICS file
+- `GET /`  Main application page
+- `POST /transcribe`  Process recognized text and generate calendar events
+- `GET /download/calendar.ics`  Download generated ICS file
 
 ---
 
