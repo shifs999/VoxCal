@@ -50,9 +50,7 @@
             --border: var(--border-light);
         }
         html, body {
-            height: 100vh;
-            overflow-y: auto;
-            overflow-x: hidden;
+            min-height: 100vh;
             scrollbar-width: thin;
             scrollbar-color: #818cf8 #23232a;
         }
@@ -60,7 +58,6 @@
             font-family: 'Inter', sans-serif;
             background: var(--bg);
             color: var(--text);
-            min-height: 100vh;
             margin: 0;
             display: flex;
             align-items: center;
@@ -513,7 +510,6 @@
                 <hr style="border:0;border-top:1px solid #818cf8;margin:10px 0;">
             `;
         }
-        
         function openGoogleCalendar(event) {
             const start = new Date(event.start);
             const end = new Date(event.end);
