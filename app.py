@@ -31,7 +31,6 @@ EVENT_KEYWORDS = [
     'therapy', 'massage', 'nap', 'sleep', 'reading', 'book', 'movie', 'show', 'shopping', 'cleanup',
     'cooking', 'cleaning', 'laundry', 'maintenance', 'repair', 'check', 'reminder', 'followup'
 ]
-
 EVENT_KEYWORDS_PATTERN = '|'.join(EVENT_KEYWORDS)
 # Split on 'and', 'also', 'then' only if followed by an event keyword
 SPLIT_PATTERN = re.compile(rf'\b(?:and|also|then)\b(?=\s+(?:a\s+)?(?:{EVENT_KEYWORDS_PATTERN})\b)', re.IGNORECASE)
@@ -175,32 +174,42 @@ def parse_text_to_events(text):
     calendar = Calendar()
     prev_end_time = None
     prev_date = None
+    now = datetime.now()
     for idx, event_text in enumerate(unique_events):
         summary = extract_event_name(event_text)
         parsed_date = extract_date(event_text)
         parsed_time = extract_time(event_text)
         duration_hours = parse_duration(event_text)
         if not parsed_date:
-            parsed_date = prev_date if prev_date else datetime.now() + timedelta(days=1)
+            parsed_date = prev_date if prev_date else now
         prev_date = parsed_date
         if not parsed_time and prev_end_time:
             start_datetime = prev_end_time
         else:
             if not parsed_time:
-                current_hour = datetime.now().hour
+                current_hour = now.hour
                 if current_hour < 12:
                     default_hour = 10
                 elif current_hour < 17:
                     default_hour = 14
                 else:
                     default_hour = 19
-                parsed_time = datetime.now().replace(hour=default_hour, minute=0, second=0, microsecond=0)
+                parsed_time = now.replace(hour=default_hour, minute=0, second=0, microsecond=0)
             start_datetime = parsed_date.replace(
                 hour=parsed_time.hour,
                 minute=parsed_time.minute,
                 second=0,
                 microsecond=0
             )
+            # If the event is for today but the time is in the past, schedule for tomorrow
+            if not extract_date(event_text) and start_datetime < now:
+                start_datetime = start_datetime + timedelta(days=1)
+        # NEW: If the event is still in the past, return an error
+        if start_datetime < now:
+            return {
+                'success': False,
+                'error': 'The specified time is in the past. Please provide a future time or date.'
+            }
         end_datetime = start_datetime + timedelta(hours=duration_hours)
         prev_end_time = end_datetime
         event = Event()
@@ -259,7 +268,6 @@ def download_calendar():
     except Exception as e:
         log.error(f"Error in download endpoint: {e}")
         return jsonify({'success': False, 'error': str(e)})
-
 
 if __name__ == '__main__':
     print("Starting VoxCal - Voice to Calendar Application")
