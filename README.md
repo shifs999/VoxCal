@@ -2,6 +2,8 @@
 
 *`VoxCal`* is a modern web application that lets users speak naturally to create calendar events. It features live speech-to-text, natural language event parsing (including durations and sequential timing), and a nice, accessible UI. Users can add single events directly to Google Calendar or download multiple events as a `.ics` file for import into any calendar app.
 
+[Deployed link](https://voxcal.onrender.com/) :-   Try it out! (the project is currently in testing phase still needs some improvements to handle some edge cases, I'll be working on better model integration and core logic for better performance)
+
 ---
 
 ## Features
