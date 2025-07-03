@@ -93,6 +93,7 @@ def extract_time(text):
             return datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
         except ValueError:
             pass
+            
     match = re.search(r'(?:at\s+)?(\d{1,2}):(\d{2})\b', text)
     if match:
         hour = int(match.group(1))
@@ -140,7 +141,6 @@ def parse_text_to_events(text):
             continue
         # Only split if there are multiple real events
         if re.search(r'\b(and|also|then)\b', sentence, re.IGNORECASE):
-            # Custom split: keep duration/time phrases with the previous event
             parts = []
             last = 0
             for m in SPLIT_PATTERN.finditer(sentence):
@@ -149,22 +149,21 @@ def parse_text_to_events(text):
                     parts.append(sentence[last:start].strip())
                 last = start
             parts.append(sentence[last:].strip())
-            # Only keep as a new event if the part contains an event keyword
+            # Merge non-keyword parts with previous event
             merged = []
             for part in parts:
                 if any(kw in part.lower() for kw in EVENT_KEYWORDS):
                     merged.append(part)
                 elif merged:
                     merged[-1] += ' ' + part
-                else:
-                    merged.append(part)
             sub_events = merged
         else:
             sub_events = [sentence]
+        # FINAL FILTER: Only keep if the fragment contains an event keyword
         for e in sub_events:
-            cleaned = e.strip(' .,!')
-            if cleaned and len(cleaned) > 4:
-                event_texts.append(cleaned)
+            cleaned = e.strip(' .,!').lower()
+            if cleaned and len(cleaned) > 4 and any(kw in cleaned for kw in EVENT_KEYWORDS):
+                event_texts.append(e.strip(' .,!'))
     # Remove duplicates (case-insensitive)
     unique_events = []
     for e in event_texts:
@@ -201,10 +200,11 @@ def parse_text_to_events(text):
                 second=0,
                 microsecond=0
             )
+            
             # If the event is for today but the time is in the past, schedule for tomorrow
             if not extract_date(event_text) and start_datetime < now:
                 start_datetime = start_datetime + timedelta(days=1)
-        # NEW: If the event is still in the past, return an error
+        # If the event is still in the past, return an error
         if start_datetime < now:
             return {
                 'success': False,
@@ -265,6 +265,7 @@ def download_calendar():
             as_attachment=True,
             download_name='calendar.ics'
         )
+        
     except Exception as e:
         log.error(f"Error in download endpoint: {e}")
         return jsonify({'success': False, 'error': str(e)})
