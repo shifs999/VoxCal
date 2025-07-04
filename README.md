@@ -1,28 +1,21 @@
 # *`VoxCal`* - Voice to Calendar Application
 
-*`VoxCal`* is a modern web application that lets users speak naturally to create calendar events. It features live speech-to-text, natural language event parsing (including durations and sequential timing), and a nice, accessible UI. Users can add single events directly to Google Calendar or download multiple events as a `.ics` file for import into any calendar app.
+*`VoxCal`* is a modern web application that lets users speak naturally to create calendar events. It features live speech-to-text, natural language event parsing (including durations and sequential timing), and a nice, accessible UI. Users can add single events <ins>*directly*</ins> to Google Calendar or download multiple events as a `.ics` file for import into any calendar app. Users can also scan the QR code for accessing the service through their smartphones.
 
-[Deployed link](https://voxcal.onrender.com/) :-   Try it out! (the project is currently in testing phase still needs some improvements to handle some edge cases, I'll be working on better model integration and core logic for better performance)
+[Deployed link](https://voxcal.onrender.com/) :-   Try it out! (The project is currently in testing phase and still needs some improvements to handle some edge cases, I'll be working on better model integration and core logic for better performance)
 
 ---
 
 ## Features
 
 - **Live Voice Recognition**: Speak your events naturally using your browser's microphone.
-- **Smart Event Parsing**: Extracts event names, times, dates, and durations from natural language.
+- **Smart Event Parsing**: Extracts event names, times, dates, and durations from natural language. Implemented from scratch for better self understanding of core concepts of parsing.
 - **Google Calendar Integration**: Add single events directly to your Google Calendar.
 - **ICS File Download**: Download multiple events as a `.ics` file for easy import.
 - **Mobile Friendly**: Responsive design and QR code for easy mobile access.
 - **No API Key Required**: All speech recognition is handled in-browser for privacy and zero cost but then efficient STT conversion is the part where we have compromised at in this case.
+- **Tech Stack**:  Python 3, Flask, Flask-CORS, icalendar, dateparser, HTML5, CSS3, JavaScript (Web Speech API)
 
----
-
-## Tech Stack
-
-- **Backend**: Python 3, Flask, Flask-CORS, icalendar, dateparser
-- **Frontend**: HTML5, CSS3, JavaScript (Web Speech API)
-- **Calendar**: iCalendar format (`.ics` files)
-  
 ---
 
 ## Dependencies
@@ -33,9 +26,50 @@
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 - [QR Code API](https://goqr.me/api/)
 
+Note :- Please speak in a clear and concise manner in a continuous flow for accurate voice capture and wait for a few seconds of processing. For proper functioning, please mention maximum of 2 events in a single speech. Here, I am using browser-based speech recognition via Web Speech API. In future, I might make use of OpenAI `Whisper` for highly accurate results. For using OpenAI `Whisper` model please create an OpenAI API key and make required changes in app.py
+
 ---
 
-Note: Please speak in a clear and concise manner in a continuous flow for accurate voice capture and wait for a few seconds of processing. For proper functioning, please mention maximum of 2 events in a single speech. Here, I am using browser-based speech recognition via Web Speech API. In future, I might make use of OpenAI `Whisper` for highly accurate results. For using OpenAI `Whisper` model please create an OpenAI API key and make required changes in app.py
+## Fixed some edge cases in recent update
+
+### 1. **Date Parsing**
+- **Explicit Dates Without Year:**  
+- **Explicit Dates With Year:**  
+- **Ambiguous Dates:**  
+- **Relative Dates:**  
+
+### 2. **Time Parsing**
+- **Default Time Assignment:**  
+  - If no time is specified, assigns a default time based on the current time of day (morning, afternoon, evening).
+
+### 3. **Duration and Range Parsing**
+- **Single Duration (Hours/Minutes):**  
+  - Input: `"for 2 hours"`, `"for 30 minutes"`
+  - **Handled:** Event duration is set accordingly.
+- **Multi-Day Events:**  
+  - Input: `"for 3 days"`, `"for 1 week"`
+  - **Handled:** Event end time is set to the correct number of days/weeks after the start.
+- **Date Ranges:**  
+  - Input: `"from 1st July to 7th July"`, `"between 10th August and 15th August"`
+  - **Handled:** Event starts at the beginning of the first date and ends at the end of the last date (23:59).
+- **Fallback Duration:**  
+  - If no duration or range is specified, defaults to a 1-hour event.
+
+### 4. **Past Dates and Times**
+- **Prevents Scheduling in the Past:**  
+  - If the parsed date/time is in the past, the system returns an error and asks for a future date/time.
+
+### 5. **Robustness**
+- **Handles Both Numeric and Word Durations:**  
+  - Input: `"for two hours"`, `"for half an hour"`
+    
+### Example Inputs for Testing
+
+- `"study session at 8:00 p.m. on 12th July"`
+- `"business meeting tomorrow at 10am"`
+- `"family event next Monday"`
+- `"group discussion at 10am and lunch at 1pm"`
+- `"conference from 5th August 2025 to 10th August 2025"`
 
 ---
 
@@ -75,24 +109,10 @@ python3 app.py
 
 ---
 
-## Deployment (Recommended: Render.com)
-
-1. **Push your code to GitHub.**
-
-2. **Deploy on [Render.com](https://render.com):**
-   - New Web Service then Connect your repo
-   - Environment: Python 3
-   - Start Command: `gunicorn app:app`
-   - (Render will auto-install from `requirements.txt`)
-
-3. **Access your app at the HTTPS URL provided by Render.**
-
----
-
 ## Usage Instructions
 
 1. **Click the microphone button** to start recording.
-2. **Speak naturally** about your events, e.g.:
+2. **Speak naturally** about your events as told in instructions, e.g.:
    - "Schedule a meeting tomorrow at 2pm for one hour"
    - "Doctor appointment on July 2nd at 10am"
    - "Lunch with family next Friday at noon for half an hour"
@@ -141,11 +161,6 @@ python3 app.py
 
 ---
 
-## License
-
-This project is open source and available under the MIT License.
-
----
 ## Contributions 
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you'd like to change.
