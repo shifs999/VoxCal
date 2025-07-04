@@ -36,21 +36,31 @@ EVENT_KEYWORDS_PATTERN = '|'.join(EVENT_KEYWORDS)
 SPLIT_PATTERN = re.compile(rf'\b(?:and|also|then)\b(?=\s+(?:a\s+)?(?:{EVENT_KEYWORDS_PATTERN})\b)', re.IGNORECASE)
 
 def parse_duration(text):
+    # Support hours, days, weeks, and ranges
     match = re.search(r'(\d+(?:\.\d+)?)\s*(?:hour|hr|h)s?', text, re.IGNORECASE)
     if match:
-        return float(match.group(1))
+        return float(match.group(1)), 'hours'
     match = re.search(r'((?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|half))\s*(?:hour|hr|h)s?', text, re.IGNORECASE)
     if match:
         word = match.group(1).lower()
-        return float(NUMBER_WORDS.get(word, 1))
+        return float(NUMBER_WORDS.get(word, 1)), 'hours'
     match = re.search(r'(\d+)\s*(?:minute|min|m)s?', text, re.IGNORECASE)
     if match:
-        return float(match.group(1)) / 60.0
+        return float(match.group(1)) / 60.0, 'hours'
+    match = re.search(r'(\d+(?:\.\d+)?)\s*(?:day|days)', text, re.IGNORECASE)
+    if match:
+        return float(match.group(1)), 'days'
+    match = re.search(r'(\d+(?:\.\d+)?)\s*(?:week|weeks)', text, re.IGNORECASE)
+    if match:
+        return float(match.group(1)), 'weeks'
+    # Range: from X to Y
+    if re.search(r'from .+ to .+', text, re.IGNORECASE):
+        return None, 'range'
     if re.search(r'half\s+(?:an\s+)?hour', text, re.IGNORECASE):
-        return 0.5
+        return 0.5, 'hours'
     if re.search(r'quarter\s+(?:of\s+an\s+)?hour', text, re.IGNORECASE):
-        return 0.25
-    return 1.0
+        return 0.25, 'hours'
+    return 1.0, 'hours'
 
 def extract_event_name(text):
     # Remove common time/date/duration phrases
@@ -93,7 +103,6 @@ def extract_time(text):
             return datetime.now().replace(hour=hour, minute=minute, second=0, microsecond=0)
         except ValueError:
             pass
-            
     match = re.search(r'(?:at\s+)?(\d{1,2}):(\d{2})\b', text)
     if match:
         hour = int(match.group(1))
@@ -112,6 +121,28 @@ def extract_time(text):
             continue
     return None
 
+def extract_date_range(text):
+    # Look for 'from X to Y' or 'between X and Y'
+    match = re.search(r'(?:from|between)\s+([^,\n]+?)\s+(?:to|and)\s+([^,\n]+)', text, re.IGNORECASE)
+    if match:
+        start_str, end_str = match.group(1), match.group(2)
+        # Always use current year if not specified
+        now = datetime.now()
+        start_date = dateparser.parse(start_str, settings={'PREFER_DATES_FROM': 'future'})
+        end_date = dateparser.parse(end_str, settings={'PREFER_DATES_FROM': 'future'})
+        if start_date and end_date:
+            # If year is missing, set to this year (or next if already passed)
+            if start_date.year == 1900:
+                start_date = start_date.replace(year=now.year)
+                if start_date < now:
+                    start_date = start_date.replace(year=now.year + 1)
+            if end_date.year == 1900:
+                end_date = end_date.replace(year=now.year)
+                if end_date < start_date:
+                    end_date = end_date.replace(year=now.year + 1)
+            return start_date, end_date
+    return None, None
+
 def extract_date(text):
     date_patterns = [
         r'\b(tomorrow|today)\b',
@@ -126,7 +157,15 @@ def extract_date(text):
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             try:
-                return dateparser.parse(match.group(0))
+                now = datetime.now()
+                dt = dateparser.parse(match.group(0), settings={'PREFER_DATES_FROM': 'future'})
+                if dt:
+                    # If year is missing, set to this year (or next if already passed)
+                    if dt.year == 1900:
+                        dt = dt.replace(year=now.year)
+                        if dt < now:
+                            dt = dt.replace(year=now.year + 1)
+                    return dt
             except:
                 continue
     return None
@@ -176,41 +215,62 @@ def parse_text_to_events(text):
     now = datetime.now()
     for idx, event_text in enumerate(unique_events):
         summary = extract_event_name(event_text)
-        parsed_date = extract_date(event_text)
-        parsed_time = extract_time(event_text)
-        duration_hours = parse_duration(event_text)
-        if not parsed_date:
-            parsed_date = prev_date if prev_date else now
-        prev_date = parsed_date
-        if not parsed_time and prev_end_time:
-            start_datetime = prev_end_time
+        # Check for date range first
+        start_range, end_range = extract_date_range(event_text)
+        if start_range and end_range:
+            start_datetime = start_range
+            end_datetime = end_range
+            # Try to extract time for start (if any)
+            parsed_time = extract_time(event_text)
+            if parsed_time:
+                start_datetime = start_datetime.replace(hour=parsed_time.hour, minute=parsed_time.minute, second=0, microsecond=0)
+            else:
+                start_datetime = start_datetime.replace(hour=10, minute=0, second=0, microsecond=0)
+            # End time is end of day
+            end_datetime = end_datetime.replace(hour=23, minute=59, second=0, microsecond=0)
         else:
-            if not parsed_time:
-                current_hour = now.hour
-                if current_hour < 12:
-                    default_hour = 10
-                elif current_hour < 17:
-                    default_hour = 14
-                else:
-                    default_hour = 19
-                parsed_time = now.replace(hour=default_hour, minute=0, second=0, microsecond=0)
-            start_datetime = parsed_date.replace(
-                hour=parsed_time.hour,
-                minute=parsed_time.minute,
-                second=0,
-                microsecond=0
-            )
-            
-            # If the event is for today but the time is in the past, schedule for tomorrow
-            if not extract_date(event_text) and start_datetime < now:
-                start_datetime = start_datetime + timedelta(days=1)
-        # If the event is still in the past, return an error
-        if start_datetime < now:
-            return {
-                'success': False,
-                'error': 'The specified time is in the past. Please provide a future time or date.'
-            }
-        end_datetime = start_datetime + timedelta(hours=duration_hours)
+            parsed_date = extract_date(event_text)
+            parsed_time = extract_time(event_text)
+            duration, duration_type = parse_duration(event_text)
+            if not parsed_date:
+                parsed_date = prev_date if prev_date else now
+            prev_date = parsed_date
+            if not parsed_time and prev_end_time:
+                start_datetime = prev_end_time
+            else:
+                if not parsed_time:
+                    current_hour = now.hour
+                    if current_hour < 12:
+                        default_hour = 10
+                    elif current_hour < 17:
+                        default_hour = 14
+                    else:
+                        default_hour = 19
+                    parsed_time = now.replace(hour=default_hour, minute=0, second=0, microsecond=0)
+                start_datetime = parsed_date.replace(
+                    hour=parsed_time.hour,
+                    minute=parsed_time.minute,
+                    second=0,
+                    microsecond=0
+                )
+                # If the event is for today but the time is in the past, schedule for tomorrow
+                if not extract_date(event_text) and start_datetime < now:
+                    start_datetime = start_datetime + timedelta(days=1)
+            # If the event is still in the past, return an error
+            if start_datetime < now:
+                return {
+                    'success': False,
+                    'error': 'The specified time is in the past. Please provide a future time or date.'
+                }
+            # Calculate end_datetime based on duration type
+            if duration_type == 'hours':
+                end_datetime = start_datetime + timedelta(hours=duration if duration is not None else 1)
+            elif duration_type == 'days':
+                end_datetime = start_datetime + timedelta(days=duration if duration is not None else 1)
+            elif duration_type == 'weeks':
+                end_datetime = start_datetime + timedelta(weeks=duration if duration is not None else 1)
+            else:
+                end_datetime = start_datetime + timedelta(hours=1)
         prev_end_time = end_datetime
         event = Event()
         event.add('summary', summary)
@@ -265,7 +325,6 @@ def download_calendar():
             as_attachment=True,
             download_name='calendar.ics'
         )
-        
     except Exception as e:
         log.error(f"Error in download endpoint: {e}")
         return jsonify({'success': False, 'error': str(e)})
