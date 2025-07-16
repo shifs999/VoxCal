@@ -1,6 +1,6 @@
-# *`VoxCal`* - Voice to Calendar Application
+# *`VoxCal`* : Speech-driven calendar management web app
 
-*`VoxCal`* is a modern web application that lets users speak naturally to create calendar events. It features live speech-to-text, natural language event parsing (including durations and sequential timing), and a nice, accessible UI. Users can add single events <ins>*directly*</ins> to Google Calendar or download multiple events as a `.ics` file for import into any calendar app. Users can also scan the QR code for accessing the service through their smartphones.
+*`VoxCal`* is a speech driven web application that lets users speak naturally to create calendar events. It features live speech-to-text, natural language event parsing (including durations and sequential timing), and a nice, accessible UI. Users can add single events <ins>*directly*</ins> to Google Calendar or download multiple events as a `.ics` file for import into any calendar app. Users can also scan the QR code for accessing the service through their smartphones.
 
 [Deployed link](https://voxcal.onrender.com/) :-   Try it out! (The project is currently in testing phase and still needs some improvements to handle some edge cases, I'll be working on better model integration and core logic for better performance)
 
